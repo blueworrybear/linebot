@@ -14,8 +14,13 @@ import (
 // Injectors from wire.go:
 
 func InitializeApplication(cfg *config.Config, db *gorm.DB) (application, error) {
-	routers := provideRouter(cfg)
 	databaseService := provideDatabaseService(db)
+	userStore := provideUserStore(databaseService)
+	chatStore := provideChatStore(databaseService)
+	questionStore := provideQuestionStore(databaseService)
+	chatService := provideChatService(cfg, userStore, chatStore)
+	questionService := provideQuestionService(userStore, questionStore, chatService)
+	routers := provideRouter(cfg, userStore, chatStore, questionStore, chatService, questionService)
 	mainApplication := newApplication(routers, databaseService)
 	return mainApplication, nil
 }

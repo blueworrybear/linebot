@@ -58,7 +58,7 @@ func Run(c *cli.Context) error{
 			if err := app.db.Migrate(); err != nil {
 				log.Panic(err)
 			}
-			log.Panicln("migration done")
+			log.Printf("migration done")
 		}()
 	}
 

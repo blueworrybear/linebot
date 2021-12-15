@@ -13,6 +13,7 @@ func InitializeApplication(cfg *config.Config, db *gorm.DB) (application, error)
 	wire.Build(
 		storeSet,
 		routerSet,
+		serviceSet,
 		newApplication,
 	)
 	return application{}, nil

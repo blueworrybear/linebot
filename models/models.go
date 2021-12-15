@@ -13,7 +13,7 @@ type databaseService struct {
 }
 
 func init() {
-	tables = append(tables, &User{})
+	tables = append(tables, &user{}, &chat{}, &question{})
 }
 
 func NewDatabaseService(db *gorm.DB) core.DatabaseService {

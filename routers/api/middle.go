@@ -20,3 +20,17 @@ func UseLineBot(cfg *config.Config) gin.HandlerFunc {
 		WithLineBot(c, bot)
 	}
 }
+
+func ParseRequest() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		linebot := MustGetLineBotFrom(c)
+		events, err := linebot.ParseRequest(c.Request)
+		if err != nil {
+			log.Println(err)
+			c.String(500, err.Error())
+			c.Abort()
+			return
+		}
+		WithEvents(c, events)
+	}
+}

@@ -1,1 +1,4 @@
 core.db
+test.db
+*.yml
+.vscode/
