@@ -15,52 +15,27 @@ func TestSimilarity(t *testing.T) {
 	t.Log(similarity)
 }
 
+func checkSelect(t *testing.T, s *chatService, chats []string, keyword string, expect int) {
+	arr := make([]*core.Chat, len(chats))
+	for i, chat := range chats {
+		arr[i] = &core.Chat{
+			ID: i,
+			Keywords: []string{chat},
+		}
+	}
+	ans, err := s.SelectWithKeyword(arr, keyword)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ans.ID != expect {
+		t.Fatal("select wrong ID", chats, keyword)
+	}
+}
+
 func TestSelectWithKeyword(t *testing.T) {
 	s := &chatService{}
 
-	chats := []*core.Chat {
-		{
-			ID: 0,
-			Keywords: []string{
-				"快樂",
-			},
-		},
-		{
-			ID: 1,
-			Keywords: []string{
-				"聖誕快樂",
-			},
-		},
-	}
-
-	chat, err := s.SelectWithKeyword(chats, "熊熊，聖誕快樂")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if chat.ID != 1 {
-		t.Fatal("select wrong ID")
-	}
-
-	chats = []*core.Chat {
-		{
-			ID: 0,
-			Keywords: []string{
-				"hi",
-			},
-		},
-		{
-			ID: 1,
-			Keywords: []string{
-				"哈囉",
-			},
-		},
-	}
-
-	chat, err = s.SelectWithKeyword(chats, "哈哈")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if chat.ID != 1 {
-		t.Fatal("select wrong ID")
-	}
+	checkSelect(t, s, []string{"快樂",	"聖誕快樂"}, "熊熊，聖誕快樂", 1)
+	checkSelect(t, s, []string{"hi",	"哈囉"}, "哈哈", 1)
+	checkSelect(t, s, []string{"",	"快樂", "愛"}, "愛", 2)
 }

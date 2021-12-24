@@ -159,7 +159,10 @@ func HandleGetRandomChat(userStore core.UserStore, chatStore core.ChatStore, ser
 			return
 		}
 		for _, u := range users {
-			if u.Role == core.UserRoleInactive {
+			if u.Role == core.UserRoleInactive{
+				continue
+			}
+			if _, ok := c.GetQuery("debug"); u.Role == core.UserRoleAdmin && !ok {
 				continue
 			}
 			if err := service.Push(bot, u, chat); err != nil {
