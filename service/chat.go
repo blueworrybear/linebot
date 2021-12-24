@@ -19,6 +19,12 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
+type NoChatsError struct {}
+
+func (e *NoChatsError) Error() string {
+	return "no chats (chats size 0)"
+}
+
 type chatService struct {
 	userStore core.UserStore
 	chatStore core.ChatStore
@@ -28,6 +34,11 @@ type chatService struct {
 type relyCandidate struct {
 	Chat *core.Chat
 	Similarity float64
+}
+
+type bound struct {
+	low int64
+	up int64
 }
 
 func NewChatService(cfg *config.Config, userStore core.UserStore, chatStore core.ChatStore) core.ChatService {
@@ -43,42 +54,32 @@ func (s *chatService) Reply(bot *linebot.Client, event *linebot.Event) error {
 	switch v := event.Message.(type) {
 	case *linebot.TextMessage:
 		query = v.Text
+	default:
+		query = ""
 	}
-	chats, err := s.chatStore.FindWithTag("basic")
+
+	user, err := s.userStore.Find(&core.User{ID: event.Source.UserID})
+	if err != nil {
+		return err
+	}
+
+	chats, err := s.chatStore.FindWithTag(user.ReplyTag)
 	if err != nil {
 		return err
 	}
 	if len(chats) <= 0 {
 		return nil
 	}
-	replies := make([]*relyCandidate, len(chats))
-	for i, chat := range chats {
-		log.Printf("reply: 43: %v", chat.Message)
-		replies[i] = newReplyCandidate(chat, query)
-	}
-	sort.Slice(replies, func(i, j int) bool {
-		return replies[i].Similarity > replies[j].Similarity
-	})
 
-	// Select close responses
-	ptr := 0
-	for _, reply := range replies {
-		if replies[0].Similarity - reply.Similarity <= 0.1 {
-			ptr++
-		}
+	chat, err := s.SelectWithKeyword(chats, query)
+	if err != nil {
+		return err
 	}
-
-	source := rand.NewSource(time.Now().Unix())
-	r := rand.New(source)
-	chat := replies[r.Intn(ptr)].Chat
 
 	if _, err := bot.ReplyMessage(event.ReplyToken, chat.Message).Do(); err != nil {
 		return err
 	}
-	user, err := s.userStore.Find(&core.User{ID: event.Source.UserID})
-	if err != nil {
-		return err
-	}
+
 	for _, nxt := range chat.NextChats {
 		if err := s.Push(bot, user, nxt); err != nil {
 			return err
@@ -144,6 +145,54 @@ func (s *chatService) Push(bot *linebot.Client, user *core.User, chat *core.Chat
 	return nil
 }
 
+func (s *chatService) SelectWithRandom(chats []*core.Chat) (*core.Chat, error) {
+	if len(chats) <= 0 {
+		return nil, &NoChatsError{}
+	}
+	now := time.Now()
+	bounds := make([]*bound,  len(chats))
+	n := int64(0)
+	for i, chat := range chats {
+		ptr := n + minInt64(int64(now.Sub(chat.LastAccessTime).Seconds()),int64(7 * 24 * 60 * 60))
+		bounds[i] = &bound{
+			low: n,
+			up: ptr,
+		}
+		n = ptr
+	}
+	seed := rand.NewSource(now.Unix())
+	r := rand.New(seed)
+	index := r.Int63n(n)
+	for i, bound := range bounds {
+		if bound.In(index) {
+			return chats[i], nil
+		}
+	}
+	return nil, fmt.Errorf("SelectWithRandom: unknown error")
+}
+
+func (s *chatService) SelectWithKeyword(chats []*core.Chat, keyword string) (*core.Chat, error) {
+	if len(chats) <= 0 {
+		return nil, &NoChatsError{}
+	}
+	candidates := make([]*relyCandidate, len(chats))
+	for i, chat := range chats {
+		candidates[i] = newReplyCandidate(chat, keyword)
+	}
+	sort.Slice(candidates, func(i, j int) bool {
+		return candidates[i].Similarity > candidates[j].Similarity
+	})
+	ptr := 0
+	for _, candidate := range candidates {
+		if candidates[0].Similarity -  candidate.Similarity < 0.1 {
+			ptr ++
+		}
+	}
+	seed := rand.NewSource(time.Now().Unix())
+	r := rand.New(seed)
+	return candidates[r.Intn(ptr)].Chat, nil
+}
+
 func newReplyCandidate(chat *core.Chat, query string) *relyCandidate {
 	r := &relyCandidate{
 		Chat: chat,
@@ -153,9 +202,18 @@ func newReplyCandidate(chat *core.Chat, query string) *relyCandidate {
 }
 
 func (r *relyCandidate) UpdateSimilarity(query string) {
+	metric := metrics.NewJaccard()
+	metric.NgramSize = 1
 	for _, key := range r.Chat.Keywords {
-		if similarity := strutil.Similarity(key, query, metrics.NewHamming()); similarity > r.Similarity {
+		if similarity := strutil.Similarity(key, query, metric); similarity > r.Similarity {
 			r.Similarity = similarity
 		}
 	}
+}
+
+func (b *bound) In(n int64) bool {
+	if b.low <= n && b.up > n {
+		return true
+	}
+	return false
 }

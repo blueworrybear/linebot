@@ -15,6 +15,8 @@ type user struct {
 	Name string
 	State int `gorm:"index"`
 	Questions []*question `gorm:"many2many:user_questions"`
+	ReplyTag string `gorm:"default:'basic'"`
+	Role string `gorm:"index;default:'normal'"`
 	LastRequestTime time.Time
 }
 
@@ -127,6 +129,8 @@ func (m *user) toCore() *core.User {
 		Name: m.Name,
 		State: core.UserState(m.State),
 		Question: q,
+		Role: core.UserRole(m.Role),
+		ReplyTag: m.ReplyTag,
 		LastRequestTime: m.LastRequestTime,
 	}
 }

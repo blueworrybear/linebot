@@ -2,8 +2,6 @@ package api
 
 import (
 	"log"
-	"math/rand"
-	"time"
 
 	"github.com/blueworrybear/lineBot/core"
 	"github.com/gin-gonic/gin"
@@ -148,21 +146,30 @@ func HandleGetRandomChat(userStore core.UserStore, chatStore core.ChatStore, ser
 			c.String(400, err.Error())
 			return
 		}
-		if len(chats) <= 0 {
+
+		chat, err := service.SelectWithRandom(chats)
+		if err != nil {
+			c.String(400, err.Error())
 			return
 		}
+
 		users, err := userStore.All()
 		if err != nil {
 			c.String(400, err.Error())
 			return
 		}
-		s := rand.NewSource(time.Now().Unix())
-		r := rand.New(s)
-		chat := chats[r.Intn(len(chats))]
 		for _, u := range users {
+			if u.Role == core.UserRoleInactive {
+				continue
+			}
 			if err := service.Push(bot, u, chat); err != nil {
 				log.Println("HandleGetRandomChat", err)
 			}
+		}
+		if err := chatStore.UpdateLastAccess(chat); err != nil {
+			log.Println("HandleGetRandomChat", err)
+			c.String(400, err.Error())
+			return
 		}
 	}
 }

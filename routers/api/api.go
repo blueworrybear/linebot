@@ -72,6 +72,9 @@ func HandleMessageEvent(usrStore core.UserStore, chatService core.ChatService, q
 				log.Println(err)
 				continue
 			}
+			if user.Role == core.UserRoleInactive {
+				continue
+			}
 			switch user.State {
 			case core.UserStateIdle:
 				if err := chatService.Reply(bot, event); err != nil {

@@ -3,6 +3,7 @@ package models
 import (
 	"encoding/json"
 	"log"
+	"time"
 
 	"github.com/blueworrybear/lineBot/core"
 	"github.com/lib/pq"
@@ -28,6 +29,7 @@ type chat struct {
 	Tag string `gorm:"index;size:256"`
 	Keywords pq.StringArray `gorm:"type:text[]"`
 	NextChats []*chat `gorm:"many2many:next_chats"`
+	LastAccessTime time.Time
 }
 
 type chatSlice []*chat
@@ -79,6 +81,11 @@ func (store *chatStore) FindWithTag(tag string) ([]*core.Chat, error) {
 		coreResults[i] = result.toCore()
 	}
 	return coreResults, nil
+}
+
+func (store *chatStore) UpdateLastAccess(c *core.Chat) error {
+	x := store.db.Session()
+	return x.Model(&chat{ID: c.ID}).Updates(&chat{LastAccessTime: time.Now()}).Error
 }
 
 func toChat(c *core.Chat, tag string) (*chat, error) {
@@ -172,6 +179,7 @@ func (m *chat) toCore() *core.Chat {
 		Message: message,
 		Keywords: m.Keywords,
 		NextChats: nextChats,
+		LastAccessTime: m.LastAccessTime,
 	}
 }
 

@@ -5,6 +5,7 @@ import "time"
 //go:generate mockgen -package mock -destination ../mock/user_mock.go . UserStore
 
 type UserState int
+type UserRole string
 
 const (
 	USER_REQUEST_THROTTLE_SECONDS = 5
@@ -16,11 +17,20 @@ const (
 	UserStateListening
 )
 
+const (
+	UserRoleAdmin UserRole = "admin"
+	UserRoleVIP UserRole = "vip"
+	UserRoleNormal UserRole = "normal"
+	UserRoleInactive UserRole = "inactive"
+)
+
 type User struct {
 	ID string
 	Name string
 	State UserState
 	Question *Question
+	Role UserRole
+	ReplyTag string
 	LastRequestTime time.Time
 }
 

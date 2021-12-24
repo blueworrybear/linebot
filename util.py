@@ -7,69 +7,6 @@ import yaml
 # HOST = "http://localhost:8080"
 HOST = "https://linebot-nsun2l34rq-de.a.run.app"
 
-def question(args):
-
-  response =requests.post(f"{HOST}/api/chats/text", json={
-    "text": "問題2",
-  })
-  question = response.json()
-  print(question)
-  response =requests.post(f"{HOST}/api/chats/text", json={
-    "text": "對了",
-  })
-  ok = response.json()
-  print(ok)
-  response =requests.post(f"{HOST}/api/chats/text", json={
-    "text": "再試一次",
-    "delay": 1,
-  })
-  again = response.json()
-  print(again)
-  response =requests.post(f"{HOST}/api/chats/text", json={
-    "text": "錯了",
-    "nextChats": [{
-      "id": again["id"],
-    }],
-  })
-  error = response.json()
-  print(error)
-  response = requests.post(f"{HOST}/api/questions", json={
-    "chat": {"id": question["id"]},
-    "answer": "A",
-    "options": ["A", "B", "C", "D"],
-    "ok": [{"id": ok["id"]}],
-    "error": [{"id": error["id"]}],
-  })
-  q2 = response.json()
-  print(q2)
-
-  response =requests.post(f"{HOST}/api/chats/text", json={
-    "text": "問題1",
-  })
-  question = response.json()
-  print(question)
-  response =requests.post(f"{HOST}/api/chats/text", json={
-    "text": "對了",
-  })
-  ok = response.json()
-  print(ok)
-  response =requests.post(f"{HOST}/api/chats/text", json={
-    "text": "錯了",
-  })
-  error = response.json()
-  print(error)
-  response = requests.post(f"{HOST}/api/questions", json={
-    "chat": {"id": question["id"]},
-    "answer": "A",
-    "options": ["A", "B", "C", "D"],
-    "ok": [{"id": ok["id"]}],
-    "error": [{"id": error["id"]}],
-    "next" : [{"id": q2["id"]}],
-  })
-  if response.status_code != 200:
-    print(response.text)
-  print(response.json())
-
 def loadQuestion(args):
   config = args.config[0]
   with open(config, 'r') as input:
@@ -136,12 +73,15 @@ def postChat(chat, nxt: int = None) -> int:
   print(result)
   return result["id"]
 
+def debug(args):
+  print("debug")
+
 def main():
   parser = argparse.ArgumentParser(description="linebot util")
   subparsers = parser.add_subparsers()
 
-  test_cmd = subparsers.add_parser("question")
-  test_cmd.set_defaults(func=question)
+  debug_cmd = subparsers.add_parser("debug")
+  debug_cmd.set_defaults(func=debug)
 
   load_chat_cmd = subparsers.add_parser("loadChat")
   load_chat_cmd.set_defaults(func=loadChat)
